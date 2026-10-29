@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>✨ 闪亮的人生计划</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", sans-serif;
+    background: #f5f5f7;
+    color: #1d1d1f;
+    min-height: 100vh;
+  }
+
+  header {
+    background: white;
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e5e7;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 1px 8px rgba(0,0,0,0.06);
+  }
+
+  header h1 { font-size: 18px; font-weight: 600; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  #save-btn {
+    background: #007aff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 16px;
+    font-size: 14px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  #save-btn:hover { background: #0066cc; }
+  #save-btn:disabled { background: #a0c4ff; cursor: default; }
+
+  #save-status { font-size: 13px; color: #6e6e73; }
+
+  .toggle-done {
+    font-size: 13px;
+    color: #007aff;
+    cursor: pointer;
+    background: none;
+    border: 1px solid #007aff;
+    border-radius: 6px;
+    padding: 5px 12px;
+  }
+
+  .quadrant-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 0;
+    padding: 20px;
+    gap: 16px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .quadrant {
+    background: white;
+    border-radius: 14px;
+    padding: 16px;
+    min-height: 280px;
+    border: 2px solid transparent;
+    transition: border-color 0.2s;
+  }
+
+  .quadrant.drag-over { border-color: #007aff; background: #f0f6ff; }
+
+  .quadrant-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .quadrant-icon { font-size: 20px; }
+
+  .quadrant-title { font-size: 15px; font-weight: 600; }
+  .quadrant-subtitle { font-size: 12px; color: #6e6e73; margin-left: auto; }
+
+  .q1 { /* 重要且紧急 */ }
+  .q2 { /* 重要不紧急 */ }
+  .q3 { /* 紧急不重要 */ }
+  .q4 { /* 不紧急不重要 */ }
+
+  .cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 40px;
+  }
+
+  .card {
+    background: white;
+    border-radius: 10px;
+    padding: 10px 12px;
+    border-left: 4px solid;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    cursor: grab;
+    user-select: none;
+    transition: box-shadow 0.15s, opacity 0.2s;
+    position: relative;
+  }
+
+  .card:active { cursor: grabbing; }
+  .card.dragging { opacity: 0.4; box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+
+  .card.done { opacity: 0.5; }
+  .card.done .card-text { text-decoration: line-through; color: #999; }
+  .card.hidden { display: none; }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .card-check {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #007aff;
+  }
+
+  .card-text {
+    font-size: 13px;
+    line-height: 1.5;
+    flex: 1;
+    word-break: break-all;
+  }
+
+  .card-text[contenteditable="true"] {
+    outline: none;
+    background: #f5f5f7;
+    border-radius: 4px;
+    padding: 2px 4px;
+  }
+
+  .card-tag {
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    color: white;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .card-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+    justify-content: flex-end;
+  }
+
+  .card-btn {
+    font-size: 11px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #999;
+    padding: 2px 4px;
+    border-radius: 4px;
+  }
+  .card-btn:hover { background: #f0f0f0; color: #333; }
+  .card-btn.delete:hover { color: #ff3b30; }
+
+  /* 分类颜色 */
+  .cat-健康    { border-color: #34c759; }
+  .cat-财务    { border-color: #ff9500; }
+  .cat-工作    { border-color: #007aff; }
+  .cat-亲子·儿子 { border-color: #af52de; }
+  .cat-自己    { border-color: #ff2d55; }
+
+  .tag-健康    { background: #34c759; }
+  .tag-财务    { background: #ff9500; }
+  .tag-工作    { background: #007aff; }
+  .tag-亲子·儿子 { background: #af52de; }
+  .tag-自己    { background: #ff2d55; }
+
+  /* 新建卡片区域 */
+  .add-section {
+    max-width: 1400px;
+    margin: 0 auto 32px;
+    padding: 0 20px;
+  }
+
+  .add-box {
+    background: white;
+    border-radius: 14px;
+    padding: 16px 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+
+  .add-box h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: #6e6e73; }
+
+  .add-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .add-input {
+    flex: 1;
+    min-width: 200px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+  }
+  .add-input:focus { border-color: #007aff; }
+
+  .add-select {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+    background: white;
+    cursor: pointer;
+  }
+
+  .add-quadrant-select {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+    background: white;
+    cursor: pointer;
+  }
+
+  .add-btn {
+    background: #007aff;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+  .add-btn:hover { background: #0066cc; }
+
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #6e6e73;
+  }
+
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  @media (max-width: 700px) {
+    .quadrant-grid { grid-template-columns: 1fr; padding: 12px; gap: 12px; }
+    header h1 { font-size: 15px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>✨ 闪亮的人生计划</h1>
+  <div class="header-right">
+    <span id="save-status"></span>
+    <button class="toggle-done" id="toggle-done-btn" onclick="toggleDone()">隐藏已完成</button>
+    <button id="save-btn" onclick="saveToGitHub()">保存到 GitHub</button>
+  </div>
+</header>
+
+<div class="quadrant-grid">
+  <div class="quadrant q1" id="q1" ondragover="onDragOver(event)" ondrop="onDrop(event,'q1')" ondragleave="onDragLeave(event)">
+    <div class="quadrant-header">
+      <span class="quadrant-icon">🔥</span>
+      <span class="quadrant-title">重要且紧急</span>
+      <span class="quadrant-subtitle">立即去做</span>
+    </div>
+    <div class="cards-container" id="cards-q1"></div>
+  </div>
+
+  <div class="quadrant q2" id="q2" ondragover="onDragOver(event)" ondrop="onDrop(event,'q2')" ondragleave="onDragLeave(event)">
+    <div class="quadrant-header">
+      <span class="quadrant-icon">🌱</span>
+      <span class="quadrant-title">重要不紧急</span>
+      <span class="quadrant-subtitle">计划去做</span>
+    </div>
+    <div class="cards-container" id="cards-q2"></div>
+  </div>
+
+  <div class="quadrant q3" id="q3" ondragover="onDragOver(event)" ondrop="onDrop(event,'q3')" ondragleave="onDragLeave(event)">
+    <div class="quadrant-header">
+      <span class="quadrant-icon">⚡</span>
+      <span class="quadrant-title">紧急不重要</span>
+      <span class="quadrant-subtitle">委托或快速处理</span>
+    </div>
+    <div class="cards-container" id="cards-q3"></div>
+  </div>
+
+  <div class="quadrant q4" id="q4" ondragover="onDragOver(event)" ondrop="onDrop(event,'q4')" ondragleave="onDragLeave(event)">
+    <div class="quadrant-header">
+      <span class="quadrant-icon">💤</span>
+      <span class="quadrant-title">不紧急不重要</span>
+      <span class="quadrant-subtitle">放一放</span>
+    </div>
+    <div class="cards-container" id="cards-q4"></div>
+  </div>
+</div>
+
+<div class="add-section">
+  <div class="add-box">
+    <h3>添加新卡片</h3>
+    <div class="add-row">
+      <input class="add-input" id="new-text" placeholder="输入新的计划条目..." onkeydown="if(event.key==='Enter')addCard()">
+      <select class="add-select" id="new-cat">
+        <option value="健康">健康</option>
+        <option value="财务">财务</option>
+        <option value="工作">工作</option>
+        <option value="亲子·儿子">亲子·儿子</option>
+        <option value="自己">自己</option>
+      </select>
+      <select class="add-quadrant-select" id="new-quadrant">
+        <option value="q2">重要不紧急</option>
+        <option value="q1">重要且紧急</option>
+        <option value="q3">紧急不重要</option>
+        <option value="q4">不紧急不重要</option>
+      </select>
+      <button class="add-btn" onclick="addCard()">+ 添加</button>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#34c759"></div>健康</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff9500"></div>财务</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#007aff"></div>工作</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#af52de"></div>亲子·儿子</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ff2d55"></div>自己</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const REPO = 'jjouc/life-plan';
+const DATA_FILE = 'data.json';
+
+function getToken() {
+  return localStorage.getItem('life_plan_token') || '';
+}
+
+function promptToken() {
+  const t = prompt('请输入 GitHub Personal Access Token（只存在本地，不上传）：');
+  if (t && t.trim()) {
+    localStorage.setItem('life_plan_token', t.trim());
+    return t.trim();
+  }
+  return '';
+}
+
+let cards = [];
+let draggingId = null;
+let showDone = true;
+let nextId = 1;
+
+const INITIAL_CARDS = [
+  // 健康
+  { id: null, cat: '健康', text: '体检加查：铁蛋白、维生素D、锌', done: false, quadrant: 'q1' },
+  { id: null, cat: '健康', text: '消化内科就诊 ✓ 2026-10-19（右上腹、大便带血、小腹痛）', done: true, quadrant: 'q1' },
+  { id: null, cat: '健康', text: '麻醉科评估后预约肠胃镜', done: false, quadrant: 'q1' },
+  { id: null, cat: '健康', text: '每天颈椎拉伸（收下巴、侧拉、慢速转头）+ 早晨猫牛式', done: false, quadrant: 'q2' },
+  { id: null, cat: '健康', text: '跑步后吃温热轻食（蛋花汤、小米粥），不空腹不暴食', done: false, quadrant: 'q2' },
+  { id: null, cat: '健康', text: '睡前写明天三件事，让脑子停下来', done: false, quadrant: 'q2' },
+  { id: null, cat: '健康', text: '继续每天自拍，记录自己的状态', done: false, quadrant: 'q4' },
+  { id: null, cat: '健康', text: '晨跑开始 ✓ 2026-10-14（5:40出发，看到日出）', done: true, quadrant: 'q2' },
+  { id: null, cat: '健康', text: '晨跑习惯稳定后加入跳舞（舞蹈课）和游泳', done: false, quadrant: 'q2' },
+  { id: null, cat: '健康', text: '设置指数基金定投（华安纳指100申购失败，待重新找替代基金）', done: false, quadrant: 'q2' },
+  // 财务
+  { id: null, cat: '财务', text: '盘点自己名下所有账户，搞清楚自己有多少钱', done: true, quadrant: 'q2' },
+  { id: null, cat: '财务', text: '理清每月固定支出（假期和爸爸一起梳理）', done: true, quadrant: 'q2' },
+  { id: null, cat: '财务', text: '了解房产现值和剩余房贷', done: true, quadrant: 'q2' },
+  { id: null, cat: '财务', text: '找人了解儿子对口初中的实际情况', done: false, quadrant: 'q2' },
+  { id: null, cat: '财务', text: '了解上海初中摇号私立的中签率', done: false, quadrant: 'q4' },
+  { id: null, cat: '财务', text: '把活期里超出应急备用金的钱转到朝朝盈', done: true, quadrant: 'q2' },
+  { id: null, cat: '财务', text: '停止把大额资金转给他人管理（建立人情账本）', done: true, quadrant: 'q1' },
+  // 工作
+  { id: null, cat: '工作', text: '浏览SAP内部招聘，了解有哪些方向', done: false, quadrant: 'q2' },
+  { id: null, cat: '工作', text: '继续建立英文会议的信心——每天用英语跟C说一件今天发生的事', done: false, quadrant: 'q2' },
+  { id: null, cat: '工作', text: '用AI提升工作效率：把业务流程/数据直接丢给Claude梳理', done: false, quadrant: 'q2' },
+  // 亲子·儿子
+  { id: null, cat: '亲子·儿子', text: '观察一次写作业全程，只看不说', done: true, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '检查作业只盯一件事：字。每次找一个写得最好的字指出来', done: true, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '订正来不及就来不及，让他自己承担后果', done: true, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '找情绪好的时候问他：你觉得写作业最难的地方是哪里？', done: true, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '十一假期：前两天先写完作业，再出发旅游', done: true, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '本周陪写作业，下周开始慢慢退出（语文月考进步）', done: true, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '检查作业：不直接指错，说"这页有几道题有问题，你自己找"', done: false, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '他回答问题慌乱时，说"不急，想清楚再说"，然后真的等，不接话', done: false, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '周日晚上睡前5分钟，一起检查书包（他主导）', done: false, quadrant: 'q2' },
+  { id: null, cat: '亲子·儿子', text: '平板规则已打印 ✓ 2026-10-28（执行中，儿子执行不稳定）', done: true, quadrant: 'q1' },
+  { id: null, cat: '亲子·儿子', text: '平板规则执行：后果执行不需要他承认，只看动作（平板9:10前有没有放回来）', done: false, quadrant: 'q1' },
+  { id: null, cat: '亲子·儿子', text: '平板规则：补上违规后果（与老公统一立场后再谈）', done: false, quadrant: 'q1' },
+  { id: null, cat: '亲子·儿子', text: '手表规则：睡前手表放妈妈处充电，不带入被窝', done: false, quadrant: 'q1' },
+  // 自己
+  { id: null, cat: '自己', text: '儿子写完作业后泡脚15分钟，给自己一个收尾仪式', done: false, quadrant: 'q2' },
+  { id: null, cat: '自己', text: '建立自己的闺蜜圈子，和朋友保持真实联结', done: false, quadrant: 'q2' },
+  { id: null, cat: '自己', text: '情绪来了不责备自己，陪着它，然后继续', done: false, quadrant: 'q2' },
+  { id: null, cat: '自己', text: '脑子里的小说随手记下来，做无意义的事也很好', done: false, quadrant: 'q4' },
+  { id: null, cat: '自己', text: '自己才是自己的底气', done: false, quadrant: 'q4' },
+  { id: null, cat: '自己', text: '去公司舞蹈课（不想去的时候只想"换衣服"，换完再想下一步）', done: false, quadrant: 'q2' },
+  { id: null, cat: '自己', text: '老公随口插嘴孩子学习时，不接话不怼，就说"好，我来安排"然后结束', done: false, quadrant: 'q2' },
+];
+
+async function loadData() {
+  try {
+    const token = getToken();
+    const headers = { 'Accept': 'application/vnd.github.v3+json' };
+    if (token) headers['Authorization'] = `token ${token}`;
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${DATA_FILE}`, { headers });
+    if (res.ok) {
+      const json = await res.json();
+      const data = JSON.parse(atob(json.content.replace(/\n/g, '')));
+      cards = data.cards;
+      nextId = data.nextId || (Math.max(...cards.map(c => c.id)) + 1);
+    } else {
+      initFromDefault();
+    }
+  } catch(e) {
+    initFromDefault();
+  }
+  renderAll();
+}
+
+function initFromDefault() {
+  cards = INITIAL_CARDS.map((c, i) => ({ ...c, id: i + 1 }));
+  nextId = cards.length + 1;
+}
+
+function renderAll() {
+  ['q1','q2','q3','q4'].forEach(q => {
+    document.getElementById('cards-' + q).innerHTML = '';
+  });
+  cards.forEach(card => renderCard(card));
+}
+
+function renderCard(card) {
+  const container = document.getElementById('cards-' + card.quadrant);
+  if (!container) return;
+
+  const div = document.createElement('div');
+  div.className = `card cat-${card.cat}${card.done ? ' done' : ''}${(!showDone && card.done) ? ' hidden' : ''}`;
+  div.id = 'card-' + card.id;
+  div.draggable = true;
+  div.addEventListener('dragstart', e => onDragStart(e, card.id));
+  div.addEventListener('dragend', onDragEnd);
+
+  div.innerHTML = `
+    <div class="card-top">
+      <input type="checkbox" class="card-check" ${card.done ? 'checked' : ''} onchange="toggleCard(${card.id})">
+      <div class="card-text" contenteditable="true" onblur="editCard(${card.id}, this.innerText)">${escHtml(card.text)}</div>
+      <span class="card-tag tag-${card.cat}">${card.cat}</span>
+    </div>
+    <div class="card-actions">
+      <button class="card-btn delete" onclick="deleteCard(${card.id})">删除</button>
+    </div>
+  `;
+  container.appendChild(div);
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleCard(id) {
+  const card = cards.find(c => c.id === id);
+  if (!card) return;
+  card.done = !card.done;
+  const el = document.getElementById('card-' + id);
+  el.classList.toggle('done', card.done);
+  if (!showDone && card.done) el.classList.add('hidden');
+  setStatus('未保存');
+}
+
+function editCard(id, text) {
+  const card = cards.find(c => c.id === id);
+  if (!card) return;
+  card.text = text.trim();
+  setStatus('未保存');
+}
+
+function deleteCard(id) {
+  if (!confirm('确定删除这张卡片吗？')) return;
+  cards = cards.filter(c => c.id !== id);
+  const el = document.getElementById('card-' + id);
+  if (el) el.remove();
+  setStatus('未保存');
+}
+
+function addCard() {
+  const text = document.getElementById('new-text').value.trim();
+  const cat = document.getElementById('new-cat').value;
+  const quadrant = document.getElementById('new-quadrant').value;
+  if (!text) return;
+  const card = { id: nextId++, cat, text, done: false, quadrant };
+  cards.push(card);
+  renderCard(card);
+  document.getElementById('new-text').value = '';
+  setStatus('未保存');
+}
+
+function toggleDone() {
+  showDone = !showDone;
+  document.getElementById('toggle-done-btn').textContent = showDone ? '隐藏已完成' : '显示已完成';
+  document.querySelectorAll('.card.done').forEach(el => {
+    el.classList.toggle('hidden', !showDone);
+  });
+}
+
+// 拖拽
+function onDragStart(e, id) {
+  draggingId = id;
+  setTimeout(() => {
+    const el = document.getElementById('card-' + id);
+    if (el) el.classList.add('dragging');
+  }, 0);
+}
+
+function onDragEnd() {
+  if (draggingId) {
+    const el = document.getElementById('card-' + draggingId);
+    if (el) el.classList.remove('dragging');
+  }
+  draggingId = null;
+  document.querySelectorAll('.quadrant').forEach(q => q.classList.remove('drag-over'));
+}
+
+function onDragOver(e) {
+  e.preventDefault();
+  e.currentTarget.classList.add('drag-over');
+}
+
+function onDragLeave(e) {
+  e.currentTarget.classList.remove('drag-over');
+}
+
+function onDrop(e, quadrant) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  if (!draggingId) return;
+  const card = cards.find(c => c.id === draggingId);
+  if (!card || card.quadrant === quadrant) return;
+  card.quadrant = quadrant;
+  const el = document.getElementById('card-' + draggingId);
+  if (el) el.remove();
+  renderCard(card);
+  setStatus('未保存');
+}
+
+async function saveToGitHub() {
+  let token = getToken();
+  if (!token) token = promptToken();
+  if (!token) { setStatus('需要 Token 才能保存'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true;
+  setStatus('保存中...');
+
+  const data = JSON.stringify({ cards, nextId }, null, 2);
+  const content = btoa(unescape(encodeURIComponent(data)));
+  const authHeaders = {
+    'Authorization': `token ${token}`,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  };
+
+  try {
+    let sha = null;
+    const getRes = await fetch(`https://api.github.com/repos/${REPO}/contents/${DATA_FILE}`, {
+      headers: { 'Authorization': `token ${token}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (getRes.ok) {
+      const json = await getRes.json();
+      sha = json.sha;
+    }
+
+    const body = { message: '更新人生计划', content };
+    if (sha) body.sha = sha;
+
+    const putRes = await fetch(`https://api.github.com/repos/${REPO}/contents/${DATA_FILE}`, {
+      method: 'PUT',
+      headers: authHeaders,
+      body: JSON.stringify(body)
+    });
+
+    if (putRes.ok) {
+      setStatus('已保存 ✓ ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}));
+    } else {
+      const err = await putRes.json();
+      setStatus('保存失败：' + (err.message || putRes.status));
+    }
+  } catch(e) {
+    setStatus('保存失败：' + e.message);
+  }
+  btn.disabled = false;
+}
+
+function setStatus(msg) {
+  document.getElementById('save-status').textContent = msg;
+}
+
+// 启动
+loadData();
+</script>
+</body>
+</html>
