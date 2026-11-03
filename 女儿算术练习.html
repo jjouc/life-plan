@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>小朋友算术练习 🌟</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Arial Rounded MT Bold', Arial, sans-serif;
+    min-height: 100vh;
+    padding: 20px;
+    transition: background 1s ease;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* ── 背景主题 ── */
+  .bg-rainbow  { background: linear-gradient(135deg, #fff9e6 0%, #ffe0f0 100%); }
+  .bg-ocean    { background: linear-gradient(135deg, #e0f7fa 0%, #b2ebf2 40%, #e8f5e9 100%); }
+  .bg-candy    { background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 40%, #fff9c4 100%); }
+  .bg-forest   { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 40%, #fff9c4 100%); }
+  .bg-galaxy   { background: linear-gradient(135deg, #e8eaf6 0%, #ede7f6 40%, #fce4ec 100%); }
+  .bg-sunshine { background: linear-gradient(135deg, #fffde7 0%, #fff9c4 40%, #fce4ec 100%); }
+  .bg-bubblegum{ background: linear-gradient(135deg, #fce4ec 0%, #e1f5fe 40%, #e8f5e9 100%); }
+
+  /* 浮动背景装饰 emoji */
+  .bg-deco {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 0; overflow: hidden;
+  }
+  .bg-deco span {
+    position: absolute;
+    font-size: 2.5rem;
+    opacity: 0.13;
+    animation: floatUp linear infinite;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(110vh) rotate(0deg); opacity: 0.13; }
+    100% { transform: translateY(-10vh)  rotate(360deg); opacity: 0.05; }
+  }
+
+  /* ── 布局 ── */
+  .page-wrap {
+    position: relative; z-index: 1;
+    max-width: 760px; margin: 0 auto;
+  }
+
+  h1 {
+    text-align: center; color: #ff6b9d;
+    font-size: 2em; margin-bottom: 5px;
+  }
+  .subtitle {
+    text-align: center; color: #ffaa33;
+    font-size: 1.1em; margin-bottom: 18px;
+  }
+
+  /* ── 背景切换按钮 ── */
+  .bg-bar {
+    display: flex; justify-content: center;
+    align-items: center; gap: 8px;
+    margin-bottom: 14px; flex-wrap: wrap;
+  }
+  .bg-label { font-size: 0.9em; color: #888; }
+  .bg-pick {
+    width: 26px; height: 26px; border-radius: 50%;
+    border: 3px solid transparent; cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .bg-pick:hover { transform: scale(1.2); }
+  .bg-pick.active { border-color: #333; transform: scale(1.15); }
+  .bg-shuffle {
+    padding: 4px 12px; border-radius: 15px;
+    border: none; background: #ffffffb0;
+    font-size: 0.9em; cursor: pointer; color: #555;
+  }
+  .bg-shuffle:hover { background: white; }
+
+  /* ── 星星计分板 ── */
+  .score-board {
+    text-align: center; font-size: 1.3em;
+    color: #7c4dff; margin-bottom: 6px; font-weight: bold;
+  }
+  .star-history {
+    text-align: center; font-size: 0.85em;
+    color: #aaa; margin-bottom: 16px;
+    cursor: pointer; text-decoration: underline dotted;
+  }
+
+  /* ── 徽章展示区 ── */
+  .badge-shelf {
+    display: flex; flex-wrap: wrap; justify-content: center;
+    gap: 10px; margin-bottom: 18px; min-height: 0;
+  }
+  .badge {
+    display: flex; flex-direction: column; align-items: center;
+    background: white; border-radius: 16px;
+    padding: 8px 14px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    font-size: 0.78em; color: #666;
+    animation: popIn 0.4s ease;
+  }
+  .badge .badge-icon { font-size: 2em; margin-bottom: 3px; }
+  .badge .badge-date { font-size: 0.75em; color: #bbb; }
+  @keyframes popIn {
+    0%   { transform: scale(0); opacity: 0; }
+    70%  { transform: scale(1.15); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* ── 模式按钮 ── */
+  .mode-row {
+    display: flex; justify-content: center;
+    gap: 10px; margin-bottom: 20px; flex-wrap: wrap;
+  }
+  .mode-btn {
+    padding: 8px 20px; border-radius: 20px;
+    border: 2px solid #ddd; background: white;
+    color: #888; font-size: 1em; cursor: pointer;
+    transition: all 0.2s;
+  }
+  .mode-btn.active {
+    background: linear-gradient(135deg, #ffaa33, #ff6b9d);
+    color: white; border-color: transparent;
+  }
+
+  /* ── 题目网格 ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px; max-width: 700px; margin: 0 auto;
+  }
+  .card {
+    background: white; border-radius: 20px;
+    padding: 20px 15px; text-align: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    border: 3px solid transparent; transition: all 0.3s;
+  }
+  .card.correct { border-color: #4caf50; background: #f0fff0; }
+  .card.wrong   { border-color: #ff5252; background: #fff0f0; animation: shake 0.4s; }
+  @keyframes shake {
+    0%,100% { transform: translateX(0); }
+    25%     { transform: translateX(-8px); }
+    75%     { transform: translateX(8px); }
+  }
+  .emoji    { font-size: 2.5em; margin-bottom: 8px; }
+  .question { font-size: 1.8em; color: #333; font-weight: bold; margin-bottom: 12px; }
+  .answer-input {
+    width: 70px; height: 50px; font-size: 1.8em;
+    text-align: center; border: 3px solid #ddd;
+    border-radius: 12px; color: #333; outline: none;
+    transition: border-color 0.2s;
+  }
+  .answer-input:focus { border-color: #ffaa33; }
+  .feedback { font-size: 1.5em; height: 1.8em; margin-top: 8px; }
+
+  /* ── 按钮行 ── */
+  .btn-row {
+    display: flex; justify-content: center;
+    gap: 15px; margin-top: 25px; flex-wrap: wrap;
+  }
+  button.btn-check {
+    padding: 12px 28px; font-size: 1.1em;
+    border: none; border-radius: 25px; cursor: pointer;
+    font-weight: bold; transition: transform 0.1s;
+    background: linear-gradient(135deg, #ffaa33, #ff6b9d);
+    color: white; box-shadow: 0 4px 12px rgba(255,107,157,0.4);
+  }
+  button.btn-new {
+    padding: 12px 28px; font-size: 1.1em;
+    border: none; border-radius: 25px; cursor: pointer;
+    font-weight: bold; transition: transform 0.1s;
+    background: linear-gradient(135deg, #7c4dff, #40c4ff);
+    color: white; box-shadow: 0 4px 12px rgba(124,77,255,0.4);
+  }
+  button:active { transform: scale(0.95); }
+
+  .result-banner {
+    display: none; text-align: center;
+    font-size: 1.6em; color: #ff6b9d; font-weight: bold;
+    margin-top: 20px; padding: 15px;
+    background: white; border-radius: 20px;
+    max-width: 700px; margin-left: auto; margin-right: auto;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  }
+
+  /* ── 庆祝烟花 ── */
+  .firework-container {
+    position: fixed; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 999;
+    overflow: hidden;
+  }
+  .spark {
+    position: absolute;
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    animation: burst 1.2s ease-out forwards;
+  }
+  @keyframes burst {
+    0%   { transform: translate(0,0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+  }
+  .confetti-piece {
+    position: absolute;
+    width: 10px; height: 14px;
+    animation: fall linear forwards;
+    border-radius: 3px;
+  }
+  @keyframes fall {
+    0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+  }
+  .celebrate-msg {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    z-index: 1000; text-align: center;
+    background: white; border-radius: 30px;
+    padding: 30px 40px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.2);
+    animation: msgPop 0.5s 0.3s ease forwards, msgFade 0.5s 3s ease forwards;
+    pointer-events: none;
+  }
+  @keyframes msgPop  { to { transform: translate(-50%,-50%) scale(1); } }
+  @keyframes msgFade { to { opacity: 0; } }
+  .celebrate-msg .big { font-size: 3em; }
+  .celebrate-msg p    { font-size: 1.4em; color: #ff6b9d; font-weight: bold; margin-top: 10px; }
+
+  /* ── 历史弹窗 ── */
+  .modal-overlay {
+    display: none; position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); z-index: 2000;
+    justify-content: center; align-items: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: white; border-radius: 24px;
+    padding: 28px 32px; max-width: 420px; width: 90%;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+    max-height: 80vh; overflow-y: auto;
+  }
+  .modal-box h2 { color: #ff6b9d; margin-bottom: 16px; }
+  .history-row {
+    display: flex; justify-content: space-between;
+    padding: 8px 0; border-bottom: 1px solid #f0f0f0;
+    font-size: 0.95em;
+  }
+  .history-row:last-child { border-bottom: none; }
+  .modal-close {
+    display: block; margin: 18px auto 0;
+    padding: 8px 28px; border-radius: 20px;
+    border: none; background: linear-gradient(135deg, #ffaa33, #ff6b9d);
+    color: white; font-size: 1em; cursor: pointer; font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<!-- 背景装饰层 -->
+<div class="bg-deco" id="bgDeco"></div>
+
+<!-- 庆祝弹窗（每次达50星时）-->
+<div class="firework-container" id="fireworks"></div>
+
+<!-- 历史记录弹窗 -->
+<div class="modal-overlay" id="historyModal" onclick="closeHistory(event)">
+  <div class="modal-box">
+    <h2>⭐ 星星历史</h2>
+    <div id="historyList"></div>
+    <button class="modal-close" onclick="closeHistoryBtn()">关闭</button>
+  </div>
+</div>
+
+<div class="page-wrap">
+  <h1>🌈 小宝贝算术游戏</h1>
+  <p class="subtitle">做完一题换一颗星星 ⭐</p>
+
+  <!-- 背景选择 -->
+  <div class="bg-bar">
+    <span class="bg-label">背景：</span>
+    <div class="bg-pick active" id="bgpick-0" style="background:linear-gradient(135deg,#fff9e6,#ffe0f0)" onclick="setBg(0)" title="彩虹糖"></div>
+    <div class="bg-pick" id="bgpick-1" style="background:linear-gradient(135deg,#e0f7fa,#e8f5e9)"       onclick="setBg(1)" title="海洋蓝"></div>
+    <div class="bg-pick" id="bgpick-2" style="background:linear-gradient(135deg,#fce4ec,#fff9c4)"       onclick="setBg(2)" title="棉花糖"></div>
+    <div class="bg-pick" id="bgpick-3" style="background:linear-gradient(135deg,#e8f5e9,#fff9c4)"       onclick="setBg(3)" title="森林绿"></div>
+    <div class="bg-pick" id="bgpick-4" style="background:linear-gradient(135deg,#e8eaf6,#fce4ec)"       onclick="setBg(4)" title="星河紫"></div>
+    <div class="bg-pick" id="bgpick-5" style="background:linear-gradient(135deg,#fffde7,#fce4ec)"       onclick="setBg(5)" title="阳光黄"></div>
+    <div class="bg-pick" id="bgpick-6" style="background:linear-gradient(135deg,#fce4ec,#e1f5fe)"       onclick="setBg(6)" title="泡泡糖"></div>
+    <button class="bg-shuffle" onclick="shuffleBg()">🎲 随机换背景</button>
+  </div>
+
+  <!-- 星星 & 历史 -->
+  <div class="score-board">⭐ 今日星星：<span id="stars">0</span> 颗</div>
+  <div class="star-history" onclick="openHistory()">📅 查看历史记录</div>
+
+  <!-- 徽章展示 -->
+  <div class="badge-shelf" id="badgeShelf"></div>
+
+  <!-- 模式选择 -->
+  <div class="mode-row">
+    <button class="mode-btn active" onclick="setMode('add')"  id="mode-add">➕ 10以内加法</button>
+    <button class="mode-btn"        onclick="setMode('sub')"  id="mode-sub">➖ 10以内减法</button>
+    <button class="mode-btn"        onclick="setMode('mix')"  id="mode-mix">🎲 10以内混合</button>
+    <button class="mode-btn"        onclick="setMode('add20')" id="mode-add20">➕ 20以内加法</button>
+    <button class="mode-btn"        onclick="setMode('sub20')" id="mode-sub20">➖ 20以内减法</button>
+    <button class="mode-btn"        onclick="setMode('mix20')" id="mode-mix20">🎲 20以内混合</button>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="btn-row">
+    <button class="btn-check" onclick="checkAll()">✅ 检查答案</button>
+    <button class="btn-new"   onclick="newGame()">🔄 换一组题目</button>
+  </div>
+
+  <div class="result-banner" id="result"></div>
+</div>
+
+<script>
+// ── 背景配置 ──
+const BG_THEMES = [
+  { cls: 'bg-rainbow',   decos: ['🌈','🍎','🌸','⭐','🍓','🦋'] },
+  { cls: 'bg-ocean',     decos: ['🐠','🐬','🌊','🦀','🐙','🌟'] },
+  { cls: 'bg-candy',     decos: ['🍭','🍬','🍦','🎀','🍩','💝'] },
+  { cls: 'bg-forest',    decos: ['🌿','🌻','🦋','🍄','🐸','🌱'] },
+  { cls: 'bg-galaxy',    decos: ['⭐','🌙','✨','🚀','💫','🌠'] },
+  { cls: 'bg-sunshine',  decos: ['☀️','🌻','🌼','🌷','🦁','🐝'] },
+  { cls: 'bg-bubblegum', decos: ['🎈','🎠','🦄','🍡','🎪','🌺'] },
+];
+
+const emojis = ['🍎','🐱','🌸','🦋','🍓','⭐','🐸','🌈','🍉','🐠','🦄','🌻','🎀','🍦','🐼'];
+let questions = [];
+let mode = 'add';
+
+// ── localStorage 工具 ──
+function today() {
+  return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+}
+
+function getStarData() {
+  try { return JSON.parse(localStorage.getItem('math_stars') || '{}'); } catch { return {}; }
+}
+
+function getTodayStars() {
+  return getStarData()[today()] || 0;
+}
+
+function addTodayStars(n) {
+  const data = getStarData();
+  const d = today();
+  const prev = data[d] || 0;
+  data[d] = prev + n;
+  localStorage.setItem('math_stars', JSON.stringify(data));
+  return data[d];
+}
+
+function getBadges() {
+  try { return JSON.parse(localStorage.getItem('math_badges') || '[]'); } catch { return []; }
+}
+
+function addBadge(badge) {
+  const badges = getBadges();
+  badges.push(badge);
+  localStorage.setItem('math_badges', JSON.stringify(badges));
+}
+
+function hasBadgeToday() {
+  return getBadges().some(b => b.date === today());
+}
+
+// ── 背景 ──
+let currentBg = -1;
+
+function setBg(idx) {
+  const theme = BG_THEMES[idx];
+  // 移除旧背景class
+  BG_THEMES.forEach(t => document.body.classList.remove(t.cls));
+  document.body.classList.add(theme.cls);
+
+  // 更新选中状态
+  document.querySelectorAll('.bg-pick').forEach((el, i) => {
+    el.classList.toggle('active', i === idx);
+  });
+
+  // 重绘浮动装饰
+  const deco = document.getElementById('bgDeco');
+  deco.innerHTML = '';
+  const decos = theme.decos;
+  for (let i = 0; i < 18; i++) {
+    const s = document.createElement('span');
+    s.textContent = decos[i % decos.length];
+    s.style.left   = Math.random() * 100 + 'vw';
+    s.style.top    = Math.random() * 100 + 'vh';
+    s.style.animationDuration  = (18 + Math.random() * 20) + 's';
+    s.style.animationDelay     = -(Math.random() * 20) + 's';
+    s.style.fontSize            = (1.5 + Math.random() * 2) + 'rem';
+    deco.appendChild(s);
+  }
+
+  currentBg = idx;
+  // 按日期自动记住今天的背景选择
+  localStorage.setItem('math_bg_date', today());
+  localStorage.setItem('math_bg_idx', idx);
+}
+
+function shuffleBg() {
+  let next = currentBg;
+  while (next === currentBg) next = Math.floor(Math.random() * BG_THEMES.length);
+  setBg(next);
+}
+
+function initBg() {
+  // 按日期轮换：每天自动换一个
+  const savedDate = localStorage.getItem('math_bg_date');
+  const savedIdx  = parseInt(localStorage.getItem('math_bg_idx') || '-1');
+  if (savedDate === today() && savedIdx >= 0) {
+    setBg(savedIdx);
+  } else {
+    // 按今天的日期决定背景（可重复，但每天固定）
+    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+    setBg(dayOfYear % BG_THEMES.length);
+  }
+}
+
+// ── 星星与徽章 ──
+let pendingStarsThisBatch = 0; // 本次 checkAll 新增的星星（未加入存储前的临时计数，防止未答完就得星）
+
+function updateStarDisplay() {
+  document.getElementById('stars').textContent = getTodayStars();
+}
+
+function renderBadges() {
+  const shelf = document.getElementById('badgeShelf');
+  shelf.innerHTML = '';
+  getBadges().forEach(b => {
+    const div = document.createElement('div');
+    div.className = 'badge';
+    div.innerHTML = `<div class="badge-icon">${b.icon}</div><div>${b.label}</div><div class="badge-date">${b.date}</div>`;
+    shelf.appendChild(div);
+  });
+}
+
+function checkAndAwardBadge(totalToday) {
+  // 每满50颗星奖励一个徽章（每天只奖一次）
+  if (totalToday >= 50 && !hasBadgeToday()) {
+    const icons = ['🏆','🥇','🎖️','👑','🌟','🎉','💎','🦄'];
+    const labels = ['今日50星！','算术小达人','超级棒棒','星星收集家','数学小天才','每日冠军','钻石宝宝','独角兽奖'];
+    const idx = getBadges().length % icons.length;
+    const badge = { icon: icons[idx], label: labels[idx], date: today() };
+    addBadge(badge);
+    renderBadges();
+    celebrate();
+  }
+}
+
+function celebrate() {
+  // 烟花
+  const fw = document.getElementById('fireworks');
+  fw.innerHTML = '';
+  const colors = ['#ff6b9d','#ffaa33','#7c4dff','#40c4ff','#4caf50','#ff5252','#ffd600'];
+  for (let burst = 0; burst < 8; burst++) {
+    const cx = 20 + Math.random() * 60 + 'vw';
+    const cy = 20 + Math.random() * 60 + 'vh';
+    setTimeout(() => {
+      for (let s = 0; s < 20; s++) {
+        const spark = document.createElement('div');
+        spark.className = 'spark';
+        const angle = (s / 20) * Math.PI * 2;
+        const dist  = 80 + Math.random() * 120;
+        spark.style.left = cx;
+        spark.style.top  = cy;
+        spark.style.background = colors[Math.floor(Math.random() * colors.length)];
+        spark.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+        spark.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+        spark.style.animationDuration = (0.8 + Math.random() * 0.6) + 's';
+        fw.appendChild(spark);
+      }
+    }, burst * 220);
+  }
+
+  // 彩带
+  for (let i = 0; i < 60; i++) {
+    setTimeout(() => {
+      const c = document.createElement('div');
+      c.className = 'confetti-piece';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[Math.floor(Math.random() * colors.length)];
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      c.style.animationDelay = Math.random() * 0.5 + 's';
+      fw.appendChild(c);
+    }, i * 30);
+  }
+
+  // 弹窗
+  const msg = document.createElement('div');
+  msg.className = 'celebrate-msg';
+  msg.innerHTML = `<div class="big">🎉🏆🎉</div><p>今天得了 50 颗星！<br>你是最棒的！</p>`;
+  document.body.appendChild(msg);
+  setTimeout(() => { msg.remove(); fw.innerHTML = ''; }, 4000);
+}
+
+// ── 历史弹窗 ──
+function openHistory() {
+  const data = getStarData();
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  const keys = Object.keys(data).sort().reverse();
+  if (keys.length === 0) {
+    list.innerHTML = '<div style="color:#bbb;text-align:center;padding:16px">还没有记录哦</div>';
+  } else {
+    keys.forEach(d => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const hasBadge = getBadges().some(b => b.date === d);
+      row.innerHTML = `<span>${d}</span><span>${data[d]} 颗星 ${hasBadge ? '🏆' : ''}</span>`;
+      list.appendChild(row);
+    });
+  }
+  document.getElementById('historyModal').classList.add('open');
+}
+
+function closeHistory(e) {
+  if (e.target.id === 'historyModal') closeHistoryBtn();
+}
+
+function closeHistoryBtn() {
+  document.getElementById('historyModal').classList.remove('open');
+}
+
+// ── 题目逻辑 ──
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function makeQuestion() {
+  const within20 = mode.endsWith('20');
+  const isAdd = mode.startsWith('add') || (mode.includes('mix') && Math.random() > 0.5);
+
+  if (isAdd) {
+    const maxA = within20 ? 19 : 9;
+    const a = randInt(1, maxA);
+    const maxB = within20 ? (20 - a) : (10 - a);
+    const b = randInt(1, Math.max(1, maxB));
+    return { a, b, op: '+', ans: a + b };
+  } else {
+    const maxA = within20 ? 20 : 10;
+    const a = randInt(2, maxA);
+    const b = randInt(1, a - 1);
+    return { a, b, op: '-', ans: a - b };
+  }
+}
+
+function setMode(m) {
+  mode = m;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('mode-' + m).classList.add('active');
+  newGame();
+}
+
+function newGame() {
+  questions = Array.from({ length: 9 }, makeQuestion);
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  document.getElementById('result').style.display = 'none';
+
+  questions.forEach((q, i) => {
+    const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.id = 'card-' + i;
+    const maxVal = mode.endsWith('20') ? 20 : 10;
+    card.innerHTML = `
+      <div class="emoji">${emoji}</div>
+      <div class="question">${q.a} ${q.op} ${q.b} = ?</div>
+      <input class="answer-input" type="number" id="ans-${i}" min="0" max="${maxVal}"
+        onkeydown="if(event.key==='Enter') checkAll()"
+        oninput="clearFeedback(${i})">
+      <div class="feedback" id="fb-${i}"></div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function clearFeedback(i) {
+  document.getElementById('fb-' + i).textContent = '';
+  document.getElementById('card-' + i).classList.remove('correct', 'wrong');
+}
+
+function checkAll() {
+  let correct = 0;
+  let allFilled = true;
+  questions.forEach((q, i) => {
+    const input = document.getElementById('ans-' + i);
+    const fb    = document.getElementById('fb-' + i);
+    const card  = document.getElementById('card-' + i);
+    const val   = input.value.trim();
+    if (val === '') { allFilled = false; return; }
+    if (parseInt(val) === q.ans) {
+      fb.textContent = '🎉 棒棒的！';
+      card.classList.add('correct'); card.classList.remove('wrong');
+      correct++;
+    } else {
+      fb.textContent = '再想想 💭';
+      card.classList.add('wrong'); card.classList.remove('correct');
+    }
+  });
+
+  if (!allFilled) return;
+
+  const total = addTodayStars(correct);
+  updateStarDisplay();
+  checkAndAwardBadge(total);
+
+  const banner = document.getElementById('result');
+  banner.style.display = 'block';
+  if (correct === 9)      banner.textContent = '🏆 全对！你是小天才！太厉害了！';
+  else if (correct >= 6)  banner.textContent = `✨ 答对了 ${correct} 题！非常棒，再试试剩下的！`;
+  else                     banner.textContent = `💪 答对了 ${correct} 题！加油加油，你可以的！`;
+}
+
+// ── 初始化 ──
+initBg();
+updateStarDisplay();
+renderBadges();
+newGame();
+</script>
+</body>
+</html>
