@@ -369,17 +369,120 @@
 const REPO = 'jjouc/life-plan';
 const DATA_FILE = 'data.json';
 
-function getToken() {
-  return localStorage.getItem('life_plan_token') || '';
+// ── 加密工具 ──────────────────────────────────────────────
+async function deriveKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt, iterations: 200000, hash: 'SHA-256' },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
-function promptToken() {
-  const t = prompt('请输入 GitHub Personal Access Token（只存在本地，不上传）：');
-  if (t && t.trim()) {
-    localStorage.setItem('life_plan_token', t.trim());
-    return t.trim();
+async function encrypt(text, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const key  = await deriveKey(password, salt);
+  const enc  = new TextEncoder();
+  const cipherBuf = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(text));
+  const result = { salt: bufToB64(salt), iv: bufToB64(iv), data: bufToB64(new Uint8Array(cipherBuf)) };
+  return JSON.stringify(result);
+}
+
+async function decrypt(cipherJson, password) {
+  const { salt, iv, data } = JSON.parse(cipherJson);
+  const key = await deriveKey(password, b64ToBuf(salt));
+  const plainBuf = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b64ToBuf(iv) }, key, b64ToBuf(data));
+  return new TextDecoder().decode(plainBuf);
+}
+
+function bufToB64(buf) { return btoa(String.fromCharCode(...buf)); }
+function b64ToBuf(b64) { return Uint8Array.from(atob(b64), c => c.charCodeAt(0)); }
+
+// ── Token 管理（加密后存 localStorage）────────────────────
+async function getToken(password) {
+  const enc = localStorage.getItem('life_plan_token_enc');
+  if (!enc) return '';
+  try { return await decrypt(enc, password); } catch { return ''; }
+}
+
+async function saveToken(token, password) {
+  const enc = await encrypt(token, password);
+  localStorage.setItem('life_plan_token_enc', enc);
+}
+
+// ── 密码界面 ──────────────────────────────────────────────
+let _password = null;
+
+function showPasswordScreen() {
+  document.body.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f7">
+      <div style="background:white;border-radius:20px;padding:40px 36px;width:360px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,0.12);text-align:center">
+        <div style="font-size:40px;margin-bottom:12px">🔐</div>
+        <h2 style="font-size:20px;font-weight:600;margin-bottom:8px">✨ 闪亮的人生计划</h2>
+        <p style="font-size:13px;color:#6e6e73;margin-bottom:28px">请输入你的访问密码</p>
+        <input id="pwd-input" type="password" placeholder="输入密码…"
+          style="width:100%;border:1px solid #e0e0e0;border-radius:10px;padding:12px 16px;font-size:16px;outline:none;text-align:center;margin-bottom:12px"
+          onkeydown="if(event.key==='Enter')submitPassword()">
+        <button onclick="submitPassword()"
+          style="width:100%;background:#007aff;color:white;border:none;border-radius:10px;padding:13px;font-size:16px;font-weight:600;cursor:pointer">
+          进入
+        </button>
+        <p id="pwd-error" style="color:#ff3b30;font-size:13px;margin-top:10px;min-height:18px"></p>
+      </div>
+    </div>`;
+  setTimeout(() => document.getElementById('pwd-input').focus(), 100);
+}
+
+async function submitPassword() {
+  const pwd = document.getElementById('pwd-input').value;
+  if (!pwd) return;
+  document.querySelector('button[onclick="submitPassword()"]').textContent = '验证中…';
+
+  // 尝试用该密码解密已有数据来验证密码是否正确
+  const hasData = localStorage.getItem('life_plan_token_enc') || await checkGitHubEncrypted(pwd);
+  if (hasData === false) {
+    // 首次使用，任何密码都接受（作为设置新密码）
+    _password = pwd;
+    initApp();
+    return;
   }
-  return '';
+  if (hasData === 'wrong') {
+    document.getElementById('pwd-error').textContent = '密码不对，请重试';
+    document.querySelector('button[onclick="submitPassword()"]').textContent = '进入';
+    document.getElementById('pwd-input').value = '';
+    document.getElementById('pwd-input').focus();
+    return;
+  }
+  _password = pwd;
+  initApp();
+}
+
+async function checkGitHubEncrypted(pwd) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${DATA_FILE}`, {
+      headers: { 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (!res.ok) return false; // 文件不存在，首次使用
+    const json = await res.json();
+    const raw = atob(json.content.replace(/\n/g, ''));
+    // 检查是否是加密格式（有 salt/iv/data 字段）
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch { return false; }
+    if (!parsed.salt) return false; // 旧的未加密格式，当首次使用处理
+    // 尝试解密验证密码
+    try { await decrypt(raw, pwd); return true; }
+    catch { return 'wrong'; }
+  } catch { return false; }
+}
+
+function initApp() {
+  // 重新注入应用 HTML
+  document.body.innerHTML = APP_HTML;
+  loadData();
 }
 
 let cards = [];
@@ -437,13 +540,29 @@ const INITIAL_CARDS = [
 
 async function loadData() {
   try {
-    const token = getToken();
+    const token = await getToken(_password);
     const headers = { 'Accept': 'application/vnd.github.v3+json' };
     if (token) headers['Authorization'] = `token ${token}`;
     const res = await fetch(`https://api.github.com/repos/${REPO}/contents/${DATA_FILE}`, { headers });
     if (res.ok) {
       const json = await res.json();
-      const data = JSON.parse(atob(json.content.replace(/\n/g, '')));
+      const raw = atob(json.content.replace(/\n/g, ''));
+      let data;
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed.salt) {
+          // 加密格式，解密
+          const plain = await decrypt(raw, _password);
+          data = JSON.parse(plain);
+        } else {
+          // 旧的未加密格式，直接用
+          data = parsed;
+        }
+      } catch {
+        initFromDefault();
+        renderAll();
+        return;
+      }
       cards = data.cards;
       nextId = data.nextId || (Math.max(...cards.map(c => c.id)) + 1);
     } else {
@@ -581,16 +700,21 @@ function onDrop(e, quadrant) {
 }
 
 async function saveToGitHub() {
-  let token = getToken();
-  if (!token) token = promptToken();
-  if (!token) { setStatus('需要 Token 才能保存'); return; }
+  let token = await getToken(_password);
+  if (!token) {
+    const t = prompt('请输入 GitHub Personal Access Token（将加密后存在本地）：');
+    if (!t || !t.trim()) { setStatus('需要 Token 才能保存'); return; }
+    token = t.trim();
+    await saveToken(token, _password);
+  }
 
   const btn = document.getElementById('save-btn');
   btn.disabled = true;
   setStatus('保存中...');
 
-  const data = JSON.stringify({ cards, nextId }, null, 2);
-  const content = btoa(unescape(encodeURIComponent(data)));
+  const plain = JSON.stringify({ cards, nextId }, null, 2);
+  const cipherJson = await encrypt(plain, _password);
+  const content = btoa(unescape(encodeURIComponent(cipherJson)));
   const authHeaders = {
     'Authorization': `token ${token}`,
     'Accept': 'application/vnd.github.v3+json',
@@ -620,7 +744,12 @@ async function saveToGitHub() {
       setStatus('已保存 ✓ ' + new Date().toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}));
     } else {
       const err = await putRes.json();
-      setStatus('保存失败：' + (err.message || putRes.status));
+      if (err.message && err.message.includes('Bad credentials')) {
+        localStorage.removeItem('life_plan_token_enc');
+        setStatus('Token 无效，请重新保存时输入');
+      } else {
+        setStatus('保存失败：' + (err.message || putRes.status));
+      }
     }
   } catch(e) {
     setStatus('保存失败：' + e.message);
@@ -632,8 +761,10 @@ function setStatus(msg) {
   document.getElementById('save-status').textContent = msg;
 }
 
-// 启动
-loadData();
+const APP_HTML = document.body.innerHTML;
+
+// 启动：先显示密码界面
+showPasswordScreen();
 </script>
 </body>
 </html>
